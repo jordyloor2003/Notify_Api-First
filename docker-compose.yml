@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. NOTIFY API BACKEND (.NET 8 Web API)
+  # ----------------------------------------------------------------------------
+  notify-api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: notify_api_service
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - Jwt__Secret=NotifyApi_SuperSecretKey_For_MasterDegree_Posgrado_2026_JWT!
+      - Jwt__Issuer=NotifyApiPlatform
+      - Jwt__Audience=NotifyApiClients
+      - MongoDb__ConnectionString=${MONGODB_URI:-mongodb://mongo-db:27017}
+      - MongoDb__DatabaseName=${MONGODB_DATABASE:-notifydb}
+      - Redis__ConnectionString=redis-cache:6379
+      - RabbitMQ__HostName=rabbitmq-broker
+    depends_on:
+      - mongo-db
+      - redis-cache
+      - rabbitmq-broker
+    networks:
+      - notify-network
+    restart: on-failure
+
+  # ----------------------------------------------------------------------------
+  # 2. BASE DE DATOS NOSQL (MongoDB 7) - Respaldo Local / Desarrollo Offline
+  # (Si defines MONGODB_URI en .env con Atlas, la API se conecta directamente a Atlas)
+  # ----------------------------------------------------------------------------
+  mongo-db:
+    image: mongo:7-jammy
+    container_name: notify_mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - notify-network
+
+  # ----------------------------------------------------------------------------
+  # 3. CACHÉ DISTRIBUIDA (Redis 7) - Rate Limiting & Idempotency
+  # ----------------------------------------------------------------------------
+  redis-cache:
+    image: redis:7-alpine
+    container_name: notify_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - notify-network
+
+  # ----------------------------------------------------------------------------
+  # 4. BROKER DE MENSAJERÍA ASÍNCRONA (RabbitMQ 3.12 con Panel Web)
+  # ----------------------------------------------------------------------------
+  rabbitmq-broker:
+    image: rabbitmq:3.12-management-alpine
+    container_name: notify_rabbitmq
+    ports:
+      - "5672:5672"    # Protocolo AMQP
+      - "15672:15672"  # Dashboard Web (user: guest / pass: guest)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - notify-network
+
+networks:
+  notify-network:
+    driver: bridge
+
+volumes:
+  mongo_data:

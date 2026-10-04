@@ -1,0 +1,30 @@
+## Archivos de entorno y credenciales (NUNCA subir a Git)
+.env
+*.env.local
+*.env.development
+
+## .NET Build y Binarios
+bin/
+obj/
+*.dll
+*.pdb
+*.exe
+
+## Visual Studio / VS Code / Rider
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Docker y Logs
+docker_data/
+*.log
+mongo_data/
+postgres_data/
+
+## Pruebas y Cobertura
+TestResults/
+coverage/
