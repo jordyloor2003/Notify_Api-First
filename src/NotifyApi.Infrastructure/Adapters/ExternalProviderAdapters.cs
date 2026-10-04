@@ -123,10 +123,74 @@ public class TwilioSmsAdapter : ISmsAdapter
     {
         var stopwatch = Stopwatch.StartNew();
 
+        var httpSmsApiKey = _config["HttpSms:ApiKey"];
+        var httpSmsFrom = _config["HttpSms:FromNumber"] ?? "+593986458283";
+
+        // 1. Android Gateway (httpSMS) -> Envío de SMS REAL GSM al chip de cualquier número celular
+        if (!string.IsNullOrWhiteSpace(httpSmsApiKey))
+        {
+            try
+            {
+                var cleanTo = phoneNumber.Trim().Replace(" ", "").Replace("-", "");
+                if (cleanTo.StartsWith("09") && cleanTo.Length == 10)
+                {
+                    cleanTo = "+593" + cleanTo.Substring(1);
+                }
+                else if (!cleanTo.StartsWith("+"))
+                {
+                    cleanTo = "+" + cleanTo;
+                }
+
+                var cleanFrom = httpSmsFrom.Trim().Replace(" ", "").Replace("-", "");
+                if (cleanFrom.StartsWith("09") && cleanFrom.Length == 10)
+                {
+                    cleanFrom = "+593" + cleanFrom.Substring(1);
+                }
+                else if (!cleanFrom.StartsWith("+"))
+                {
+                    cleanFrom = "+" + cleanFrom;
+                }
+
+                using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.httpsms.com/v1/messages/send");
+                request.Headers.Add("x-api-key", httpSmsApiKey.Trim());
+
+                var payload = new
+                {
+                    content = message,
+                    from = cleanFrom,
+                    to = cleanTo
+                };
+
+                request.Content = new StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(payload),
+                    System.Text.Encoding.UTF8,
+                    "application/json"
+                );
+
+                var response = await _httpClient.SendAsync(request, ct);
+                if (response.IsSuccessStatusCode)
+                {
+                    stopwatch.Stop();
+                    var messageId = $"httpsms-{Guid.NewGuid():N}";
+                    _logger.LogInformation("✓ SMS REAL despachado vía Android Gateway (httpSMS) a {Recipient} desde {From} en {Latency}ms", cleanTo, cleanFrom, stopwatch.ElapsedMilliseconds);
+                    return NotificationResult.Ok("Android_Gateway_httpSMS", messageId, (int)stopwatch.ElapsedMilliseconds);
+                }
+                else
+                {
+                    var error = await response.Content.ReadAsStringAsync(ct);
+                    _logger.LogWarning("httpSMS Gateway retornó error ({StatusCode}): {Error}. Evaluando fallback...", response.StatusCode, error);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Excepción conectando con httpSMS Gateway para {Recipient}", phoneNumber);
+            }
+        }
+
+        // 2. Fallback a Telegram Bot si está configurado (con sonido y notificación inmediata)
         var botToken = _config["Telegram:BotToken"];
         var defaultChatId = _config["Telegram:DefaultChatId"] ?? "5143698092";
 
-        // Si se configuró Bot Token de Telegram -> ENVÍO REAL DIRECTO AL CELULAR
         if (!string.IsNullOrWhiteSpace(botToken))
         {
             try
