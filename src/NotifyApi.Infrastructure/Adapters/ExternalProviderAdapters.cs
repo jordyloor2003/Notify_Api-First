@@ -101,15 +101,87 @@ public class AwsSesEmailAdapter : SmtpEmailAdapter
 }
 
 /// <summary>
-/// Adaptador GoF para Twilio SMS API.
-/// Desacopla la lógica de Notify API de las APIs de Twilio.
+/// Adaptador GoF para envío de SMS y mensajería móvil con soporte dual:
+/// - Envíos REALES a Telegram (con sonido y notificación inmediata) si hay Bot Token configurado.
+/// - Modo Sandbox simulado Twilio si no se configuran credenciales.
 /// </summary>
 public class TwilioSmsAdapter : ISmsAdapter
 {
+    private readonly IConfiguration _config;
+    private readonly ILogger<TwilioSmsAdapter> _logger;
+    private readonly HttpClient _httpClient;
     private readonly Random _random = new();
+
+    public TwilioSmsAdapter(IConfiguration config, ILogger<TwilioSmsAdapter> logger)
+    {
+        _config = config;
+        _logger = logger;
+        _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+    }
 
     public async Task<NotificationResult> SendSmsAsync(string phoneNumber, string message, CancellationToken ct = default)
     {
+        var stopwatch = Stopwatch.StartNew();
+
+        var botToken = _config["Telegram:BotToken"];
+        var defaultChatId = _config["Telegram:DefaultChatId"] ?? "5143698092";
+
+        // Si se configuró Bot Token de Telegram -> ENVÍO REAL DIRECTO AL CELULAR
+        if (!string.IsNullOrWhiteSpace(botToken))
+        {
+            try
+            {
+                var targetChatId = defaultChatId;
+                if (!phoneNumber.StartsWith("+") && long.TryParse(phoneNumber, out _))
+                {
+                    targetChatId = phoneNumber;
+                }
+
+                var formattedText = $"🔔 *NOTIFY API (SMS a {phoneNumber})*:\n\n{message}";
+
+                var payload = new
+                {
+                    chat_id = targetChatId,
+                    text = formattedText,
+                    parse_mode = "Markdown"
+                };
+
+                var jsonContent = new StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(payload),
+                    System.Text.Encoding.UTF8,
+                    "application/json"
+                );
+
+                var response = await _httpClient.PostAsync(
+                    $"https://api.telegram.org/bot{botToken.Trim()}/sendMessage",
+                    jsonContent,
+                    ct
+                );
+
+                stopwatch.Stop();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var messageId = $"tg-{Guid.NewGuid():N}";
+                    _logger.LogInformation("✓ Mensaje SMS/Telegram REAL entregado al celular {Recipient} en {Latency}ms", phoneNumber, stopwatch.ElapsedMilliseconds);
+                    return NotificationResult.Ok("Telegram_Bot", messageId, (int)stopwatch.ElapsedMilliseconds);
+                }
+                else
+                {
+                    var error = await response.Content.ReadAsStringAsync(ct);
+                    _logger.LogWarning("Telegram API retornó error: {Error}", error);
+                    return NotificationResult.Fail("Telegram_Bot", $"Error de API Telegram: {error}", (int)response.StatusCode, (int)stopwatch.ElapsedMilliseconds);
+                }
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _logger.LogError(ex, "Excepción enviando mensaje SMS/Telegram a {Recipient}", phoneNumber);
+                return NotificationResult.Fail("Telegram_Bot", $"Fallo de transporte: {ex.Message}", 500, (int)stopwatch.ElapsedMilliseconds);
+            }
+        }
+
+        // Modo Sandbox Simulado Twilio
         var latency = _random.Next(10, 25);
         await Task.Delay(latency, ct);
 
@@ -118,8 +190,8 @@ public class TwilioSmsAdapter : ISmsAdapter
             return NotificationResult.Fail("Twilio", "Formato E.164 requerido (+[código][número])", 400, latency);
         }
 
-        var messageId = $"SM{Guid.NewGuid():N}";
-        return NotificationResult.Ok("Twilio", messageId, latency);
+        var mockId = $"SM{Guid.NewGuid():N}";
+        return NotificationResult.Ok("Twilio", mockId, latency);
     }
 }
 
