@@ -12,6 +12,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Update="appsettings*.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\NotifyApi.Domain\NotifyApi.Domain.csproj" />
     <ProjectReference Include="..\NotifyApi.Application\NotifyApi.Application.csproj" />
     <ProjectReference Include="..\NotifyApi.Infrastructure\NotifyApi.Infrastructure.csproj" />
