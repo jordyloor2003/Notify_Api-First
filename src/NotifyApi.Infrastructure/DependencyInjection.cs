@@ -19,8 +19,8 @@ public static class DependencyInjection
         services.AddSingleton(messageQueue);
         services.AddSingleton<IMessageQueuePublisher>(messageQueue);
 
-        // 2. Adaptadores de Proveedores Externos (Patrón GoF Adapter)
-        services.AddSingleton<IEmailAdapter, AwsSesEmailAdapter>();
+        // 2. Adaptadores de Proveedores Externos (Patrón GoF Adapter con soporte SMTP Real)
+        services.AddSingleton<IEmailAdapter, SmtpEmailAdapter>();
         services.AddSingleton<ISmsAdapter, TwilioSmsAdapter>();
         services.AddSingleton<IPushAdapter, FcmPushAdapter>();
 

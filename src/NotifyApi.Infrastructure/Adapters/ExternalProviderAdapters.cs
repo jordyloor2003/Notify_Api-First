@@ -1,30 +1,102 @@
+using System.Diagnostics;
+using System.Net;
+using System.Net.Mail;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using NotifyApi.Application.Adapters;
 using NotifyApi.Application.Common;
 
 namespace NotifyApi.Infrastructure.Adapters;
 
 /// <summary>
-/// Adaptador GoF para Amazon Simple Email Service (SES).
-/// Desacopla la lógica interna del protocolo de AWS.
+/// Adaptador GoF para envío de correos electrónicos con soporte dual:
+/// - Envíos REALES vía servidor SMTP (Gmail, Amazon SES, Brevo, SendGrid, etc.) si hay credenciales configuradas.
+/// - Modo Sandbox simulado si no se configuran credenciales SMTP.
 /// </summary>
-public class AwsSesEmailAdapter : IEmailAdapter
+public class SmtpEmailAdapter : IEmailAdapter
 {
+    private readonly IConfiguration _config;
+    private readonly ILogger<SmtpEmailAdapter> _logger;
     private readonly Random _random = new();
+
+    public SmtpEmailAdapter(IConfiguration config, ILogger<SmtpEmailAdapter> logger)
+    {
+        _config = config;
+        _logger = logger;
+    }
 
     public async Task<NotificationResult> SendEmailAsync(string to, string subject, string body, CancellationToken ct = default)
     {
-        // Simulación de latencia de red hacia AWS SES (5 a 20 ms en sandbox)
-        var latency = _random.Next(5, 20);
-        await Task.Delay(latency, ct);
+        var stopwatch = Stopwatch.StartNew();
 
-        // Validación de formato de correo
-        if (!to.Contains('@'))
+        var host = _config["Smtp:Host"] ?? "smtp.gmail.com";
+        var portStr = _config["Smtp:Port"] ?? "587";
+        var port = int.TryParse(portStr, out var p) ? p : 587;
+        var username = _config["Smtp:Username"];
+        var password = _config["Smtp:Password"];
+        var fromEmail = _config["Smtp:From"] ?? username ?? "notificaciones@notifyapi.com";
+        var enableSsl = bool.Parse(_config["Smtp:EnableSsl"] ?? "true");
+
+        // Validación básica de formato
+        if (string.IsNullOrWhiteSpace(to) || !to.Contains('@'))
         {
-            return NotificationResult.Fail("AWS_SES", "Email inválido: Formato de destinatario rechazado por SES", 400, latency);
+            return NotificationResult.Fail("SMTP", "Email inválido: Formato de destinatario rechazado", 400, (int)stopwatch.ElapsedMilliseconds);
         }
 
-        var messageId = $"ses-{Guid.NewGuid():N}";
-        return NotificationResult.Ok("AWS_SES", messageId, latency);
+        // Si se configuraron credenciales -> ENVÍO REAL A LA BANDEJA DE ENTRADA
+        if (!string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password))
+        {
+            try
+            {
+                using var client = new SmtpClient(host, port)
+                {
+                    Credentials = new NetworkCredential(username.Trim(), password.Trim()),
+                    EnableSsl = enableSsl,
+                    DeliveryMethod = SmtpDeliveryMethod.Network,
+                    Timeout = 15000
+                };
+
+                using var mailMessage = new MailMessage
+                {
+                    From = new MailAddress(fromEmail.Trim(), "Notify API Platform"),
+                    Subject = subject,
+                    Body = body,
+                    IsBodyHtml = body.Contains('<') && body.Contains('>')
+                };
+
+                mailMessage.To.Add(to.Trim());
+
+                await client.SendMailAsync(mailMessage, ct);
+                stopwatch.Stop();
+
+                var messageId = $"smtp-{Guid.NewGuid():N}";
+                _logger.LogInformation("✓ Correo REAL entregado con éxito a {Recipient} vía {Host} en {Latency}ms", to, host, stopwatch.ElapsedMilliseconds);
+                return NotificationResult.Ok("Gmail_SMTP", messageId, (int)stopwatch.ElapsedMilliseconds);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _logger.LogError(ex, "Error enviando correo REAL a {Recipient} vía SMTP", to);
+                return NotificationResult.Fail("Gmail_SMTP", $"Error de transporte SMTP: {ex.Message}", 500, (int)stopwatch.ElapsedMilliseconds);
+            }
+        }
+
+        // Modo Sandbox Simulado con latencia realista
+        var simLatency = _random.Next(8, 25);
+        await Task.Delay(simLatency, ct);
+        var mockId = $"ses-{Guid.NewGuid():N}";
+        return NotificationResult.Ok("AWS_SES_Sandbox", mockId, simLatency);
+    }
+}
+
+/// <summary>
+/// Alias de compatibilidad hacia SmtpEmailAdapter.
+/// </summary>
+public class AwsSesEmailAdapter : SmtpEmailAdapter
+{
+    public AwsSesEmailAdapter(IConfiguration config, ILogger<SmtpEmailAdapter> logger)
+        : base(config, logger)
+    {
     }
 }
 
@@ -38,11 +110,9 @@ public class TwilioSmsAdapter : ISmsAdapter
 
     public async Task<NotificationResult> SendSmsAsync(string phoneNumber, string message, CancellationToken ct = default)
     {
-        // Simulación de latencia de red hacia Twilio (10 a 25 ms)
         var latency = _random.Next(10, 25);
         await Task.Delay(latency, ct);
 
-        // Validación de formato telefónico E.164
         if (!phoneNumber.StartsWith('+'))
         {
             return NotificationResult.Fail("Twilio", "Formato E.164 requerido (+[código][número])", 400, latency);
@@ -63,7 +133,6 @@ public class FcmPushAdapter : IPushAdapter
 
     public async Task<NotificationResult> SendPushAsync(string deviceToken, string title, string body, CancellationToken ct = default)
     {
-        // Simulación de latencia hacia Google FCM (5 a 15 ms)
         var latency = _random.Next(5, 15);
         await Task.Delay(latency, ct);
 
