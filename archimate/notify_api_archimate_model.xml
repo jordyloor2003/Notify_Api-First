@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model xmlns="http://www.opengroup.org/xsd/archimate/3.0/"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.opengroup.org/xsd/archimate/3.0/ http://www.opengroup.org/xsd/archimate/3.1/archimate3_Model.xsd"
+       identifier="id-notify-archimate-model">
+  <name xml:lang="es">Notify API - Pirámide de Arquitectura Empresarial (ArchiMate 3.1)</name>
+  
+  <elements>
+    <!-- ========================================== -->
+    <!-- 1. CAPA DE ESTRATEGIA (STRATEGY LAYER)     -->
+    <!-- ========================================== -->
+    <element identifier="cap-orquestacion" xsi:type="Capability">
+      <name xml:lang="es">Orquestación Omnicanal de Comunicaciones</name>
+    </element>
+    <element identifier="cap-plantillas" xsi:type="Capability">
+      <name xml:lang="es">Gestión y Versionado de Plantillas Dinámicas</name>
+    </element>
+    <element identifier="cap-cuotas" xsi:type="Capability">
+      <name xml:lang="es">Gobernanza de Cuotas y Tráfico B2B</name>
+    </element>
+    <element identifier="cap-auditoria" xsi:type="Capability">
+      <name xml:lang="es">Trazabilidad y Auditoría Transaccional</name>
+    </element>
+
+    <element identifier="val-stream-notif" xsi:type="ValueStream">
+      <name xml:lang="es">Flujo de Valor: Despacho y Entrega Transaccional Segura</name>
+    </element>
+
+    <!-- ========================================== -->
+    <!-- 2. CAPA DE NEGOCIO (BUSINESS LAYER)        -->
+    <!-- ========================================== -->
+    <element identifier="actor-cliente-b2b" xsi:type="BusinessActor">
+      <name xml:lang="es">Empresa Cliente B2B (FinTech / E-commerce)</name>
+    </element>
+    <element identifier="actor-usuario-final" xsi:type="BusinessActor">
+      <name xml:lang="es">Usuario Final / Destinatario</name>
+    </element>
+
+    <element identifier="bsrv-despacho" xsi:type="BusinessService">
+      <name xml:lang="es">Servicio de Notificaciones Transaccionales B2B</name>
+    </element>
+    <element identifier="bsrv-plantillas" xsi:type="BusinessService">
+      <name xml:lang="es">Servicio de Administración de Plantillas</name>
+    </element>
+    <element identifier="bsrv-auditoria" xsi:type="BusinessService">
+      <name xml:lang="es">Servicio de Consulta de Estados y Auditoría</name>
+    </element>
+
+    <element identifier="bproc-ingesta" xsi:type="BusinessProcess">
+      <name xml:lang="es">Ingesta y Validación de Solicitudes</name>
+    </element>
+    <element identifier="bproc-enrutamiento" xsi:type="BusinessProcess">
+      <name xml:lang="es">Enrutamiento Multicanal y Despacho Resiliente</name>
+    </element>
+    <element identifier="bproc-conciliacion" xsi:type="BusinessProcess">
+      <name xml:lang="es">Conciliación de Entrega y Cobro de Créditos</name>
+    </element>
+
+    <!-- ========================================== -->
+    <!-- 3. CAPA DE APLICACIÓN (APPLICATION LAYER)  -->
+    <!-- ========================================== -->
+    <element identifier="asrv-rest-api" xsi:type="ApplicationService">
+      <name xml:lang="es">API REST HTTP/JSON Interface</name>
+    </element>
+    <element identifier="asrv-worker-delivery" xsi:type="ApplicationService">
+      <name xml:lang="es">Asynchronous Queue &amp; Retry Service</name>
+    </element>
+
+    <element identifier="acomp-notify-webapi" xsi:type="ApplicationComponent">
+      <name xml:lang="es">Notify API Core (ASP.NET Core 8)</name>
+    </element>
+    <element identifier="acomp-worker" xsi:type="ApplicationComponent">
+      <name xml:lang="es">Notification Background Worker</name>
+    </element>
+    <element identifier="acomp-email-adapter" xsi:type="ApplicationComponent">
+      <name xml:lang="es">Email Adapter (SMTP / SES)</name>
+    </element>
+    <element identifier="acomp-sms-adapter" xsi:type="ApplicationComponent">
+      <name xml:lang="es">SMS Adapter (Android Gateway / Twilio / Telegram)</name>
+    </element>
+    <element identifier="acomp-push-adapter" xsi:type="ApplicationComponent">
+      <name xml:lang="es">Push Adapter (Firebase FCM)</name>
+    </element>
+
+    <!-- ========================================== -->
+    <!-- 4. CAPA DE TECNOLOGÍA (TECHNOLOGY LAYER)   -->
+    <!-- ========================================== -->
+    <element identifier="node-aws-ec2" xsi:type="Node">
+      <name xml:lang="es">Servidor AWS EC2 (Ubuntu Linux)</name>
+    </element>
+    <element identifier="node-docker" xsi:type="SystemSoftware">
+      <name xml:lang="es">Docker Container Runtime Engine</name>
+    </element>
+    <element identifier="node-mongodb" xsi:type="Node">
+      <name xml:lang="es">Cluster MongoDB Atlas (Cloud NoSQL)</name>
+    </element>
+    <element identifier="node-android-gateway" xsi:type="Device">
+      <name xml:lang="es">Dispositivo Celular Android Gateway (SIM GSM)</name>
+    </element>
+    <element identifier="node-smtp-gmail" xsi:type="Node">
+      <name xml:lang="es">Google SMTP Server Network (Port 587)</name>
+    </element>
+  </elements>
+
+  <relationships>
+    <!-- Estrategia -> Negocio -->
+    <relationship identifier="rel-cap1-bsrv1" source="cap-orquestacion" target="bsrv-despacho" xsi:type="Realization"/>
+    <relationship identifier="rel-cap2-bsrv2" source="cap-plantillas" target="bsrv-plantillas" xsi:type="Realization"/>
+    <relationship identifier="rel-cap4-bsrv3" source="cap-auditoria" target="bsrv-auditoria" xsi:type="Realization"/>
+
+    <!-- Negocio -> Actores -->
+    <relationship identifier="rel-actor-bsrv1" source="bsrv-despacho" target="actor-cliente-b2b" xsi:type="Serving"/>
+    <relationship identifier="rel-bsrv-usuario" source="bsrv-despacho" target="actor-usuario-final" xsi:type="Serving"/>
+
+    <!-- Negocio -> Procesos -->
+    <relationship identifier="rel-bsrv-proc1" source="bsrv-despacho" target="bproc-ingesta" xsi:type="Realization"/>
+    <relationship identifier="rel-proc1-proc2" source="bproc-ingesta" target="bproc-enrutamiento" xsi:type="Triggering"/>
+    <relationship identifier="rel-proc2-proc3" source="bproc-enrutamiento" target="bproc-conciliacion" xsi:type="Triggering"/>
+
+    <!-- Aplicación -> Negocio -->
+    <relationship identifier="rel-asrv-bsrv1" source="asrv-rest-api" target="bsrv-despacho" xsi:type="Realization"/>
+    <relationship identifier="rel-acomp-asrv1" source="acomp-notify-webapi" target="asrv-rest-api" xsi:type="Realization"/>
+    <relationship identifier="rel-acomp-worker" source="acomp-worker" target="asrv-worker-delivery" xsi:type="Realization"/>
+    <relationship identifier="rel-worker-email" source="acomp-worker" target="acomp-email-adapter" xsi:type="Composition"/>
+    <relationship identifier="rel-worker-sms" source="acomp-worker" target="acomp-sms-adapter" xsi:type="Composition"/>
+    <relationship identifier="rel-worker-push" source="acomp-worker" target="acomp-push-adapter" xsi:type="Composition"/>
+
+    <!-- Tecnología -> Aplicación -->
+    <relationship identifier="rel-ec2-docker" source="node-aws-ec2" target="node-docker" xsi:type="Assignment"/>
+    <relationship identifier="rel-docker-webapi" source="node-docker" target="acomp-notify-webapi" xsi:type="Serving"/>
+    <relationship identifier="rel-docker-worker" source="node-docker" target="acomp-worker" xsi:type="Serving"/>
+    <relationship identifier="rel-mongo-webapi" source="node-mongodb" target="acomp-notify-webapi" xsi:type="Serving"/>
+    <relationship identifier="rel-android-sms" source="node-android-gateway" target="acomp-sms-adapter" xsi:type="Serving"/>
+    <relationship identifier="rel-gmail-email" source="node-smtp-gmail" target="acomp-email-adapter" xsi:type="Serving"/>
+  </relationships>
+
+  <views>
+    <diagrams>
+      <view identifier="view-piramide-completa" xsi:type="Diagram">
+        <name xml:lang="es">Pirámide de Capas de Notify API (ArchiMate 3.1)</name>
+      </view>
+    </diagrams>
+  </views>
+</model>
