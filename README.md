@@ -45,7 +45,7 @@ Esta opción es ideal para desarrollo rápido. La API incluye un **mecanismo de 
 
 ### Paso 1. Clonar el repositorio y situarse en la raíz
 ```bash
-cd c:\Users\FanId\Desktop\BinaSystem\Notify_Api-First
+cd c:\ruta\raiz\Notify_Api-First
 ```
 
 ### Paso 2. Crear el archivo de variables de entorno `.env`
