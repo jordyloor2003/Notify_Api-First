@@ -4,6 +4,8 @@ Plataforma empresarial **API-First** orientada a la orquestación, gestión y de
 
 Desarrollada en **C# / .NET 8 LTS** bajo principios de **Clean Architecture**, patrones **GoF** (Strategy, Factory Method, Adapter, State), resiliencia perimetral (**Rate Limiting Token Bucket, Circuit Breaker, Idempotencia**), seguridad **JWT / RBAC**, especificación formal **OpenAPI 3.0**, estandarización de errores **RFC 7807**, persistencia NoSQL con **MongoDB Atlas / Local** (con fallback InMemory automático) y contenedorización con **Docker & Docker Compose**.
 
+Swagger Notify API: [http://52.15.152.202](http://52.15.152.202/)
+
 ---
 
 ## 📋 Tabla de Contenidos
