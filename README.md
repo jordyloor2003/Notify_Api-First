@@ -300,19 +300,28 @@ curl -X GET http://localhost:8080/api/v1/channels \
 
 ### 1. Pruebas Unitarias (xUnit)
 La suite contiene **20 pruebas unitarias automatizadas** que validan:
-* Patrones de diseño GoF: **Strategy** (Email, SMS, Push), **Factory Method**, **Adapter** y **State** (`Queued` → `Processing` → `Sent`/`Failed`).
-* Reconstitución DDD de entidades de dominio.
-* Mecanismos de deduplicación e idempotencia.
-* Formateo de errores RFC 7807 (*Problem Details*).
+* Patrones de diseño GoF: **Strategy** (Email, SMS, Push), **Factory Method**, **Adapter** y **State** (`Pending` → `Processing` → `Sent`/`Failed`/`Retry`).
+* Reconstitución DDD de entidades de dominio e hidratación de agregados.
+* Mecanismos de deduplicación e idempotencia con TTL.
+* Seguridad y emisión de credenciales JWT con RBAC.
+* Resiliencia e inyección de dependencias con fallback automático InMemory.
+
+> 📄 **Reportes detallados generados:**
+> * Reporte interactivo Web: [`report.html`](file:///c:/Users/FanId/Desktop/BinaSystem/Notify_Api-First/report.html) (Abrir en navegador para ver métricas, filtros y búsqueda).
+> * Documentación técnica Markdown: [`TEST_REPORT.md`](file:///c:/Users/FanId/Desktop/BinaSystem/Notify_Api-First/TEST_REPORT.md).
 
 Para ejecutarlas:
 ```bash
 dotnet test
 ```
 
-Salida esperada:
+Salida de la última ejecución:
 ```text
-Superado: 20, Con error: 0, Omitido: 0, Total: 20 (100% exitosas)
+Pruebas totales: 20
+     Correcto: 20 (100% exitosas)
+  Con error: 0
+    Omitido: 0
+ Tiempo total: 34,8 s
 ```
 
 ### 2. Pruebas de Rendimiento y Estrés con k6
