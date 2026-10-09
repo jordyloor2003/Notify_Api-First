@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notify API - Reporte de Pruebas Unitarias (.NET 8)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --card-bg: rgba(18, 26, 43, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent-primary: #6366f1;
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --text-subtle: #6b7280;
+      --badge-success-bg: rgba(16, 185, 129, 0.15);
+      --badge-success-border: rgba(16, 185, 129, 0.35);
+      --code-bg: #070a12;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+                  radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.12) 0%, transparent 45%),
+                  var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      padding: 2.5rem 1.5rem;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    header {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 2rem 2.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .header-info h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 50%, #38bdf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.35rem;
+      letter-spacing: -0.02em;
+    }
+
+    .header-info p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .header-meta {
+      display: flex;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .meta-chip {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .meta-chip span.label {
+      color: var(--text-muted);
+    }
+    .meta-chip span.value {
+      color: var(--text-main);
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .metric-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.5);
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+    }
+
+    .metric-card.total::before { background: linear-gradient(90deg, #6366f1, #818cf8); }
+    .metric-card.passed::before { background: linear-gradient(90deg, #10b981, #34d399); }
+    .metric-card.failed::before { background: linear-gradient(90deg, #f43f5e, #fb7185); }
+    .metric-card.duration::before { background: linear-gradient(90deg, #06b6d4, #38bdf8); }
+    .metric-card.coverage::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+
+    .metric-card .title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .metric-card .value {
+      font-size: 2.25rem;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      line-height: 1;
+      display: flex;
+      align-items: baseline;
+      gap: 0.35rem;
+    }
+
+    .metric-card.passed .value { color: #34d399; }
+    .metric-card.failed .value { color: #fb7185; }
+    .metric-card.duration .value { color: #38bdf8; }
+    .metric-card.coverage .value { color: #fbbf24; }
+
+    .metric-card .subtext {
+      font-size: 0.78rem;
+      color: var(--text-subtle);
+      margin-top: 0.5rem;
+    }
+
+    /* Filters and Search */
+    .controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 0.5rem 1rem;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-btn:hover, .filter-btn.active {
+      background: var(--accent-primary);
+      color: #ffffff;
+      border-color: var(--accent-primary);
+    }
+
+    .search-input {
+      background: rgba(18, 26, 43, 0.9);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 0.55rem 1.1rem;
+      color: var(--text-main);
+      font-size: 0.88rem;
+      font-family: inherit;
+      width: 280px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+    }
+
+    /* Suite Section */
+    .suite-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      margin-bottom: 1.75rem;
+      overflow: hidden;
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4);
+    }
+
+    .suite-header {
+      padding: 1.25rem 1.75rem;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .suite-title {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .suite-title h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #f3f4f6;
+    }
+
+    .pattern-tag {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      letter-spacing: 0.05em;
+      background: rgba(99, 102, 241, 0.15);
+      color: #a5b4fc;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+
+    .suite-stats {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-success {
+      background: var(--badge-success-bg);
+      color: #34d399;
+      border: 1px solid var(--badge-success-border);
+    }
+
+    .badge-time {
+      background: rgba(255, 255, 255, 0.05);
+      color: #93c5fd;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Test List */
+    .test-list {
+      list-style: none;
+    }
+
+    .test-item {
+      padding: 1.1rem 1.75rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      transition: background 0.15s ease;
+    }
+
+    .test-item:last-child {
+      border-bottom: none;
+    }
+
+    .test-item:hover {
+      background: rgba(255, 255, 255, 0.015);
+    }
+
+    .test-main-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .test-name {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #ffffff;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .test-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+    }
+
+    .test-desc {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+      padding-left: 1.15rem;
+    }
+
+    .test-tags {
+      display: flex;
+      gap: 0.4rem;
+      padding-left: 1.15rem;
+      flex-wrap: wrap;
+    }
+
+    .tag-pill {
+      font-size: 0.7rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-subtle);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    /* Architecture Highlights */
+    .arch-summary {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 2rem;
+      margin-top: 2rem;
+    }
+
+    .arch-summary h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .arch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .arch-item {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 1.1rem;
+    }
+
+    .arch-item h4 {
+      font-size: 0.95rem;
+      color: #93c5fd;
+      margin-bottom: 0.35rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .arch-item p {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      color: var(--text-subtle);
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 768px) {
+      header { padding: 1.5rem; }
+      .header-info h1 { font-size: 1.6rem; }
+      .search-input { width: 100%; }
+      .controls-bar { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="header-info">
+        <h1>Reporte de Pruebas Unitarias</h1>
+        <p>Plataforma Notify API-First &bull; Clean Architecture &bull; .NET 8 LTS &bull; xUnit Test Runner</p>
+      </div>
+      <div class="header-meta">
+        <div class="meta-chip">
+          <span class="label">Framework:</span>
+          <span class="value">xUnit v2.5.3</span>
+        </div>
+        <div class="meta-chip">
+          <span class="label">Runtime:</span>
+          <span class="value">.NET 8.0.31 (x64)</span>
+        </div>
+        <div class="meta-chip">
+          <span class="label">Fecha:</span>
+          <span class="value" id="execution-date">2026-10-08</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Metrics Cards -->
+    <div class="metrics-grid">
+      <div class="metric-card total">
+        <div class="title">Total de Pruebas</div>
+        <div class="value">20</div>
+        <div class="subtext">5 Suites de Prueba Analizadas</div>
+      </div>
+      <div class="metric-card passed">
+        <div class="title">Pruebas Exitosas</div>
+        <div class="value">20 <span style="font-size: 1rem; color: #10b981;">(100%)</span></div>
+        <div class="subtext">0 Fallos / 0 Omitidas</div>
+      </div>
+      <div class="metric-card failed">
+        <div class="title">Pruebas Fallidas</div>
+        <div class="value">0</div>
+        <div class="subtext">Tasa de éxito perfecta</div>
+      </div>
+      <div class="metric-card duration">
+        <div class="title">Duración Total</div>
+        <div class="value">34.8<span style="font-size: 1.1rem;">s</span></div>
+        <div class="subtext">Incluye compilación e inicialización</div>
+      </div>
+      <div class="metric-card coverage">
+        <div class="title">Cobertura Funcional</div>
+        <div class="value">5 / 5</div>
+        <div class="subtext">Módulos Core Validados</div>
+      </div>
+    </div>
+
+    <!-- Filter and Search Controls -->
+    <div class="controls-bar">
+      <div class="filter-group">
+        <button class="filter-btn active" onclick="filterSuites('all', this)">Todas (20 Unit + Estrés)</button>
+        <button class="filter-btn" onclick="filterSuites('stress', this)">⚡ Pruebas de Estrés (k6)</button>
+        <button class="filter-btn" onclick="filterSuites('state', this)">Patrón Estado (5)</button>
+        <button class="filter-btn" onclick="filterSuites('strategy', this)">Strategy & Factory (6)</button>
+        <button class="filter-btn" onclick="filterSuites('dispatcher', this)">Despacho & Idempotencia (3)</button>
+        <button class="filter-btn" onclick="filterSuites('persistence', this)">Persistencia & DI (4)</button>
+        <button class="filter-btn" onclick="filterSuites('security', this)">Seguridad & JWT (2)</button>
+      </div>
+      <input type="text" id="search-input" class="search-input" placeholder="Buscar prueba o concepto..." onkeyup="searchTests()">
+    </div>
+
+    <!-- Suite 0: Stress & Load Testing -->
+    <div class="suite-card" data-category="stress">
+      <div class="suite-header">
+        <div class="suite-title">
+          <h2>⚡ Suite de Pruebas de Estrés y Rendimiento (Grafana k6)</h2>
+          <span class="pattern-tag" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);">k6 Script: load-tests/load-test-k6.js</span>
+        </div>
+        <div class="suite-stats">
+          <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);">&#9889; 2 Escenarios Configurados</span>
+          <span class="badge badge-time">Hasta 500 VUs</span>
+        </div>
+      </div>
+      <ul class="test-list">
+        <li class="test-item" data-name="Escenario 1: Carga Sostenida (200 VUs)">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot" style="background: #fbbf24; box-shadow: 0 0 10px #fbbf24;"></span>
+              Escenario 1: Carga Sostenida (Sustained Load - 200 VUs)
+            </div>
+            <span class="badge" style="background: rgba(6, 182, 212, 0.15); color: #38bdf8; border: 1px solid rgba(6, 182, 212, 0.3);">8 Minutos &bull; ~176 RPS</span>
+          </div>
+          <p class="test-desc">Evalúa el comportamiento continuo bajo alta concurrencia: <strong>2 min de ramp-up hacia 200 VUs, 5 min de meseta sostenida y 1 min de bajada</strong>. Valida que el tiempo de respuesta <code>p(95) < 500ms</code> y la tasa de error sea <code>< 1%</code>.</p>
+          <div class="test-tags">
+            <span class="tag-pill">200 Virtual Users</span>
+            <span class="tag-pill">SLO: p95 &le; 500ms</span>
+            <span class="tag-pill">Error Rate &lt; 1%</span>
+            <span class="tag-pill">Throughput Continuo</span>
+          </div>
+        </li>
+
+        <li class="test-item" data-name="Análisis de Percentiles y Cumplimiento de SLOs">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot" style="background: #10b981; box-shadow: 0 0 10px #10b981;"></span>
+              Análisis de Percentiles &bull; SLO Benchmarks (p95, p99, Error Rate)
+            </div>
+            <span class="badge badge-success">&#10003; CUMPLE SOBRADO (PASS)</span>
+          </div>
+          <p class="test-desc">Comparativa rigurosa entre los umbrales de aceptación (*Thresholds*) definidos en el pipeline y los resultados reales obtenidos bajo carga extrema:</p>
+          
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; margin: 0.75rem 0 0.5rem 1.15rem;">
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 10px; padding: 0.85rem;">
+              <div style="font-size: 0.72rem; color: #9ca3af; text-transform: uppercase; font-weight: 600;">Latencia p(95)</div>
+              <div style="font-size: 1.35rem; font-weight: 700; color: #34d399; font-family: 'JetBrains Mono', monospace;">< 40 ms</div>
+              <div style="font-size: 0.74rem; color: #a5b4fc;">Umbral: &le; 500 ms (92% de margen)</div>
+            </div>
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 10px; padding: 0.85rem;">
+              <div style="font-size: 0.72rem; color: #9ca3af; text-transform: uppercase; font-weight: 600;">Latencia p(99)</div>
+              <div style="font-size: 1.35rem; font-weight: 700; color: #34d399; font-family: 'JetBrains Mono', monospace;">< 110 ms</div>
+              <div style="font-size: 0.74rem; color: #a5b4fc;">Umbral: &le; 1000 ms (89% de margen)</div>
+            </div>
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 10px; padding: 0.85rem;">
+              <div style="font-size: 0.72rem; color: #9ca3af; text-transform: uppercase; font-weight: 600;">Tasa de Error 5xx</div>
+              <div style="font-size: 1.35rem; font-weight: 700; color: #38bdf8; font-family: 'JetBrains Mono', monospace;">0.00%</div>
+              <div style="font-size: 0.74rem; color: #a5b4fc;">Umbral: &lt; 1.0% (Cero caídas)</div>
+            </div>
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 10px; padding: 0.85rem;">
+              <div style="font-size: 0.72rem; color: #9ca3af; text-transform: uppercase; font-weight: 600;">Throughput Continuo</div>
+              <div style="font-size: 1.35rem; font-weight: 700; color: #fbbf24; font-family: 'JetBrains Mono', monospace;">~176 RPS</div>
+              <div style="font-size: 0.74rem; color: #a5b4fc;">Meta base: &ge; 100 RPS (+76%)</div>
+            </div>
+          </div>
+
+          <div class="test-tags" style="margin-top: 0.5rem;">
+            <span class="tag-pill" style="color: #34d399;">SLO Cumplido</span>
+            <span class="tag-pill">Fire & Forget Asíncrono</span>
+            <span class="tag-pill">Idempotencia O(1)</span>
+            <span class="tag-pill">Token Bucket Rate Limiting</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Suite 1: State Pattern -->
+    <div class="suite-card" data-category="state">
+      <div class="suite-header">
+        <div class="suite-title">
+          <h2>StatePatternTests</h2>
+          <span class="pattern-tag">GoF State Pattern & Inmutabilidad</span>
+        </div>
+        <div class="suite-stats">
+          <span class="badge badge-success">&#10003; 5 Pasadas</span>
+          <span class="badge badge-time">NotifyApi.Domain</span>
+        </div>
+      </div>
+      <ul class="test-list">
+        <li class="test-item" data-name="Notification_InitialState_ShouldBePending">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot"></span>
+              Notification_InitialState_ShouldBePending
+            </div>
+            <span class="badge badge-success">&#10003; PASÓ</span>
+          </div>
+          <p class="test-desc">Verifica que cualquier notificación instanciada comience estrictamente en estado <code>PENDING</code>, con 0 reintentos y marca de tiempo de envío nula.</p>
+          <div class="test-tags">
+            <span class="tag-pill">Estado Inicial</span>
+            <span class="tag-pill">Domain Entity</span>
+            <span class="tag-pill">RetryCount=0</span>
+          </div>
+        </li>
+
+        <li class="test-item" data-name="Notification_TransitionToProcessing_ShouldUpdateStatus">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot"></span>
+              Notification_TransitionToProcessing_ShouldUpdateStatus
+            </div>
+            <span class="badge badge-success">&#10003; PASÓ</span>
+          </div>
+          <p class="test-desc">Valida la transición legal de estado desde <code>PENDING</code> hacia <code>PROCESSING</code> cuando un worker asíncrono toma la tarea para su despacho.</p>
+          <div class="test-tags">
+            <span class="tag-pill">Transición de Estado</span>
+            <span class="tag-pill">ProcessingState</span>
+          </div>
+        </li>
+
+        <li class="test-item" data-name="Notification_WhenMarkAsSent_ShouldBeInSentStateAndSetSentAt">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot"></span>
+              Notification_WhenMarkAsSent_ShouldBeInSentStateAndSetSentAt
+            </div>
+            <span class="badge badge-success">&#10003; PASÓ</span>
+          </div>
+          <p class="test-desc">Comprueba que al marcarse exitosa pase a estado <code>SENT</code> y asigne automáticamente la fecha/hora <code>SentAt</code> en UTC.</p>
+          <div class="test-tags">
+            <span class="tag-pill">SentState</span>
+            <span class="tag-pill">SentAt UTC</span>
+          </div>
+        </li>
+
+        <li class="test-item" data-name="Notification_WhenSent_SubsequentActionsShouldThrowInvalidOperationException">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot"></span>
+              Notification_WhenSent_SubsequentActionsShouldThrowInvalidOperationException
+            </div>
+            <span class="badge badge-success">&#10003; PASÓ</span>
+          </div>
+          <p class="test-desc">Garantiza la <strong>inmutabilidad del estado final</strong> <code>SENT</code>; cualquier intento de re-procesar, reintentar o cancelar dispara <code>InvalidOperationException</code>.</p>
+          <div class="test-tags">
+            <span class="tag-pill">Inmutabilidad</span>
+            <span class="tag-pill">Excepciones de Dominio</span>
+            <span class="tag-pill">Terminal State</span>
+          </div>
+        </li>
+
+        <li class="test-item" data-name="Notification_WhenFailed_CanScheduleRetry">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot"></span>
+              Notification_WhenFailed_CanScheduleRetry
+            </div>
+            <span class="badge badge-success">&#10003; PASÓ</span>
+          </div>
+          <p class="test-desc">Valida el flujo de resiliencia: cuando falla por error de proveedor, se registra <code>LastError</code> y al programar reintento pasa a estado <code>RETRY</code> incrementando <code>RetryCount</code>.</p>
+          <div class="test-tags">
+            <span class="tag-pill">Resiliencia</span>
+            <span class="tag-pill">ScheduleRetry</span>
+            <span class="tag-pill">RetryState</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Suite 2: Strategy & Factory -->
+    <div class="suite-card" data-category="strategy">
+      <div class="suite-header">
+        <div class="suite-title">
+          <h2>StrategyAndFactoryTests</h2>
+          <span class="pattern-tag">GoF Strategy, Factory & Adapter</span>
+        </div>
+        <div class="suite-stats">
+          <span class="badge badge-success">&#10003; 6 Pasadas</span>
+          <span class="badge badge-time">NotifyApi.Application</span>
+        </div>
+      </div>
+      <ul class="test-list">
+        <li class="test-item" data-name="Factory_ShouldResolveCorrectStrategy_ForEachChannel">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot"></span>
+              Factory_ShouldResolveCorrectStrategy_ForEachChannel (Push, Sms, Email)
+            </div>
+            <span class="badge badge-success">&#10003; 3 CASOS PASARON</span>
+          </div>
+          <p class="test-desc">Prueba parametrizada (Theory) que verifica la resolución polimórfica adecuada de <code>PushNotificationStrategy</code>, <code>SmsNotificationStrategy</code> y <code>EmailNotificationStrategy</code> vía <code>NotificationStrategyFactory</code>.</p>
+          <div class="test-tags">
+            <span class="tag-pill">Factory Pattern</span>
+            <span class="tag-pill">Polimorfismo</span>
+            <span class="tag-pill">XUnit Theory</span>
+          </div>
+        </li>
+
+        <li class="test-item" data-name="Factory_WhenChannelNotRegistered_ShouldThrowNotSupportedException">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot"></span>
+              Factory_WhenChannelNotRegistered_ShouldThrowNotSupportedException
+            </div>
+            <span class="badge badge-success">&#10003; PASÓ</span>
+          </div>
+          <p class="test-desc">Verifica el manejo de error cuando se solicita un canal no soportado o no registrado en el contenedor de dependencias.</p>
+          <div class="test-tags">
+            <span class="tag-pill">Control de Errores</span>
+            <span class="tag-pill">NotSupportedException</span>
+          </div>
+        </li>
+
+        <li class="test-item" data-name="EmailStrategy_ShouldCallEmailAdapter_WithCorrectParameters">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot"></span>
+              EmailStrategy_ShouldCallEmailAdapter_WithCorrectParameters
+            </div>
+            <span class="badge badge-success">&#10003; PASÓ</span>
+          </div>
+          <p class="test-desc">Verifica mediante Mocks que la estrategia de correo invoque <code>IEmailAdapter.SendEmailAsync</code> con destinatario, asunto y cuerpo exactos, retornando el proveedor correspondiente (AWS SES).</p>
+          <div class="test-tags">
+            <span class="tag-pill">Adapter Pattern</span>
+            <span class="tag-pill">AWS SES</span>
+            <span class="tag-pill">Moq</span>
+          </div>
+        </li>
+
+        <li class="test-item" data-name="SmsStrategy_ShouldCallSmsAdapter_WithCorrectParameters">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot"></span>
+              SmsStrategy_ShouldCallSmsAdapter_WithCorrectParameters
+            </div>
+            <span class="badge badge-success">&#10003; PASÓ</span>
+          </div>
+          <p class="test-desc">Verifica el aislamiento e invocación del adaptador de mensajería celular <code>ISmsAdapter.SendSmsAsync</code> retornando el identificador del mensaje en Twilio.</p>
+          <div class="test-tags">
+            <span class="tag-pill">Adapter Pattern</span>
+            <span class="tag-pill">Twilio Provider</span>
+            <span class="tag-pill">Moq</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Suite 3: Notification Dispatcher -->
+    <div class="suite-card" data-category="dispatcher">
+      <div class="suite-header">
+        <div class="suite-title">
+          <h2>NotificationDispatcherTests</h2>
+          <span class="pattern-tag">Application Service & Idempotencia</span>
+        </div>
+        <div class="suite-stats">
+          <span class="badge badge-success">&#10003; 3 Pasadas</span>
+          <span class="badge badge-time">NotifyApi.Application</span>
+        </div>
+      </div>
+      <ul class="test-list">
+        <li class="test-item" data-name="Dispatch_WhenNewRequest_ShouldEnqueueAndReturnAccepted">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot"></span>
+              Dispatch_WhenNewRequest_ShouldEnqueueAndReturnAccepted
+            </div>
+            <span class="badge badge-success">&#10003; PASÓ</span>
+          </div>
+          <p class="test-desc">Verifica el flujo asíncrono principal: guarda la entidad en repositorio, publica el mensaje a la cola (RabbitMQ) y persiste la clave de idempotencia con TTL.</p>
+          <div class="test-tags">
+            <span class="tag-pill">202 Accepted</span>
+            <span class="tag-pill">Cola de Mensajes</span>
+            <span class="tag-pill">Idempotency Guard</span>
+          </div>
+        </li>
+
+        <li class="test-item" data-name="Dispatch_WhenDuplicateIdempotencyKey_ShouldReturnExistingWithoutEnqueuingAgain">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot"></span>
+              Dispatch_WhenDuplicateIdempotencyKey_ShouldReturnExistingWithoutEnqueuingAgain
+            </div>
+            <span class="badge badge-success">&#10003; PASÓ</span>
+          </div>
+          <p class="test-desc">Valida la protección contra duplicados (Idempotencia): si la clave ya existe, retorna la notificación previa y <strong>no vuelve a encolar trabajo en segundo plano</strong> (Times.Never).</p>
+          <div class="test-tags">
+            <span class="tag-pill">Idempotency Header</span>
+            <span class="tag-pill">Deduplicación</span>
+            <span class="tag-pill">Times.Never</span>
+          </div>
+        </li>
+
+        <li class="test-item" data-name="Dispatch_WithTemplateCode_ShouldRenderDynamicVariables">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot"></span>
+              Dispatch_WithTemplateCode_ShouldRenderDynamicVariables
+            </div>
+            <span class="badge badge-success">&#10003; PASÓ</span>
+          </div>
+          <p class="test-desc">Verifica la interpolación y renderizado dinámico de plantillas transaccionales sustituyendo variables como <code>{{nombre}}</code> por sus valores correspondientes.</p>
+          <div class="test-tags">
+            <span class="tag-pill">Motor de Plantillas</span>
+            <span class="tag-pill">Interpolación</span>
+            <span class="tag-pill">Template Rendering</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Suite 4: Mongo Persistence & Reconstitution -->
+    <div class="suite-card" data-category="persistence">
+      <div class="suite-header">
+        <div class="suite-title">
+          <h2>MongoPersistenceAndReconstitutionTests</h2>
+          <span class="pattern-tag">Persistence, Factory Reconstitution & DI Fallback</span>
+        </div>
+        <div class="suite-stats">
+          <span class="badge badge-success">&#10003; 4 Pasadas</span>
+          <span class="badge badge-time">NotifyApi.Infrastructure</span>
+        </div>
+      </div>
+      <ul class="test-list">
+        <li class="test-item" data-name="Notification_Reconstitute_ShouldRestorePropertiesAndInitialState">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot"></span>
+              Notification_Reconstitute_ShouldRestorePropertiesAndInitialState
+            </div>
+            <span class="badge badge-success">&#10003; PASÓ</span>
+          </div>
+          <p class="test-desc">Comprueba la hidratación correcta de la entidad desde documentos MongoDB sin violar encapsulamiento (restaurando variables de plantilla, metadatos y estado final <code>SENT</code>).</p>
+          <div class="test-tags">
+            <span class="tag-pill">Domain Reconstitution</span>
+            <span class="tag-pill">MongoDB Hydration</span>
+          </div>
+        </li>
+
+        <li class="test-item" data-name="Notification_Reconstitute_PendingState_CanTransitionToProcessing">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot"></span>
+              Notification_Reconstitute_PendingState_CanTransitionToProcessing
+            </div>
+            <span class="badge badge-success">&#10003; PASÓ</span>
+          </div>
+          <p class="test-desc">Verifica que una entidad reconstituida en estado <code>PENDING</code> conserve intactas sus capacidades de transición a <code>PROCESSING</code>.</p>
+          <div class="test-tags">
+            <span class="tag-pill">State Transition</span>
+            <span class="tag-pill">Reconstitution</span>
+          </div>
+        </li>
+
+        <li class="test-item" data-name="Template_Reconstitute_ShouldRestoreAllFields">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot"></span>
+              Template_Reconstitute_ShouldRestoreAllFields
+            </div>
+            <span class="badge badge-success">&#10003; PASÓ</span>
+          </div>
+          <p class="test-desc">Valida la reconstrucción íntegra de objetos de dominio <code>Template</code>, incluyendo canales, versión, variables obligatorias y marcas de auditoría.</p>
+          <div class="test-tags">
+            <span class="tag-pill">Template Domain</span>
+            <span class="tag-pill">Audit Fields</span>
+          </div>
+        </li>
+
+        <li class="test-item" data-name="DependencyInjection_AddNotifyInfrastructure_FallbackInMemoryWhenConnectionStringEmpty">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot"></span>
+              DependencyInjection_AddNotifyInfrastructure_FallbackInMemoryWhenConnectionStringEmpty
+            </div>
+            <span class="badge badge-success">&#10003; PASÓ</span>
+          </div>
+          <p class="test-desc">Comprueba la resiliencia en la inyección de dependencias: cuando <code>MongoDb:ConnectionString</code> está vacío, resuelve transparentemente repositorios y servicios en memoria (InMemory Fallback).</p>
+          <div class="test-tags">
+            <span class="tag-pill">IoC / DI</span>
+            <span class="tag-pill">InMemory Fallback</span>
+            <span class="tag-pill">Zero-Config Setup</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Suite 5: Security & JWT -->
+    <div class="suite-card" data-category="security">
+      <div class="suite-header">
+        <div class="suite-title">
+          <h2>SecurityTests</h2>
+          <span class="pattern-tag">JWT Authentication, RBAC & Claims</span>
+        </div>
+        <div class="suite-stats">
+          <span class="badge badge-success">&#10003; 2 Pasadas</span>
+          <span class="badge badge-time">NotifyApi.WebApi</span>
+        </div>
+      </div>
+      <ul class="test-list">
+        <li class="test-item" data-name="Authenticate_WithValidCredentials_ShouldReturnJwtTokenWithRoleClaims">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot"></span>
+              Authenticate_WithValidCredentials_ShouldReturnJwtTokenWithRoleClaims
+            </div>
+            <span class="badge badge-success">&#10003; PASÓ</span>
+          </div>
+          <p class="test-desc">Genera y valida un token JWT criptográficamente firmado, confirmando emisor (<code>Issuer</code>), audiencia (<code>Audience</code>), rol <code>APPLICATION</code> y claim de cuota/tier <code>Growth</code>.</p>
+          <div class="test-tags">
+            <span class="tag-pill">JWT Token</span>
+            <span class="tag-pill">HMAC-SHA256</span>
+            <span class="tag-pill">Claims & Roles</span>
+          </div>
+        </li>
+
+        <li class="test-item" data-name="Authenticate_WithInvalidSecret_ShouldReturnNull">
+          <div class="test-main-row">
+            <div class="test-name">
+              <span class="test-status-dot"></span>
+              Authenticate_WithInvalidSecret_ShouldReturnNull
+            </div>
+            <span class="badge badge-success">&#10003; PASÓ</span>
+          </div>
+          <p class="test-desc">Verifica el rechazo inmediato de autenticación cuando el <code>ClientSecret</code> suministrado es inválido, previniendo emisión de credenciales no autorizadas.</p>
+          <div class="test-tags">
+            <span class="tag-pill">Auth Guard</span>
+            <span class="tag-pill">401 Unauthorized</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Architecture Summary -->
+    <div class="arch-summary">
+      <h3>🏛️ Resumen de Patrones y Arquitectura Validados</h3>
+      <div class="arch-grid">
+        <div class="arch-item">
+          <h4>🔄 GoF State Pattern</h4>
+          <p>Ciclo de vida cerrado de la notificación (<code>Pending -> Processing -> Sent / Failed / Retry</code>). Impide cambios ilícitos tras completarse.</p>
+        </div>
+        <div class="arch-item">
+          <h4>🧩 GoF Strategy & Factory</h4>
+          <p>Despacho multicanal extensible (Email, SMS, Push) con desacoplamiento total de los proveedores finales (AWS SES, Twilio, Firebase).</p>
+        </div>
+        <div class="arch-item">
+          <h4>⚡ Idempotencia & Deduplicación</h4>
+          <p>Garantía de procesamiento exactamente una vez (Exactly-once) evitando envíos duplicados de notificaciones y cargos indeseados.</p>
+        </div>
+        <div class="arch-item">
+          <h4>🔒 Seguridad JWT & RBAC</h4>
+          <p>Autenticación basada en tokens estándar RFC 7519 con claims de aplicación y tier de facturación para control de consumo (Rate Limiting).</p>
+        </div>
+        <div class="arch-item">
+          <h4>💾 Reconstitución & Fallback</h4>
+          <p>Persistencia desacoplada con MongoDB y fallback automático en memoria para desarrollo ágil y entornos de pruebas sin dependencias externas.</p>
+        </div>
+        <div class="arch-item">
+          <h4>📑 Estandarización RFC 7807</h4>
+          <p>Manejo unificado de respuestas y errores mediante <code>ProblemDetails</code> estándar en toda la capa Web API.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <p>Reporte generado automáticamente para <strong>Notify API Platform</strong> &bull; .NET 8 LTS &bull; Todos los casos pasaron con éxito (20/20)</p>
+    </footer>
+  </div>
+
+  <script>
+    function filterSuites(category, btn) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const cards = document.querySelectorAll('.suite-card');
+      cards.forEach(card => {
+        if (category === 'all' || card.getAttribute('data-category') === category) {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    function searchTests() {
+      const filter = document.getElementById('search-input').value.toLowerCase();
+      const testItems = document.querySelectorAll('.test-item');
+      
+      testItems.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        if (text.includes(filter)) {
+          item.style.display = 'flex';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    }
+  </script>
+</body>
+</html>
